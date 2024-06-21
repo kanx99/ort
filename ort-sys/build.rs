@@ -210,12 +210,14 @@ fn prepare_libort_dir() -> (PathBuf, bool) {
 			let static_configs: Vec<(PathBuf, PathBuf, PathBuf, Box<dyn Fn(PathBuf, &String) -> PathBuf>)> = vec![
 				(lib_dir.join(&profile), lib_dir.join("lib"), lib_dir.join("_deps"), Box::new(|p: PathBuf, profile| p.join(profile))),
 				(lib_dir.join(&profile), lib_dir.join("lib"), lib_dir.join(&profile).join("_deps"), Box::new(|p: PathBuf, _| p)),
+				(lib_dir.clone(), lib_dir.join("lib"), lib_dir.join("_deps"), Box::new(|p: PathBuf, _| p)),
 				(lib_dir.clone(), lib_dir.join("lib"), lib_dir.parent().unwrap().join("_deps"), Box::new(|p: PathBuf, _| p)),
 				(lib_dir.join("onnxruntime"), lib_dir.join("onnxruntime").join("lib"), lib_dir.join("_deps"), Box::new(|p: PathBuf, _| p)),
 			];
 			for (lib_dir, extension_lib_dir, external_lib_dir, transform_dep) in static_configs {
 				if lib_dir.join(platform_format_lib("onnxruntime_common")).exists() && external_lib_dir.exists() {
 					add_search_dir(&lib_dir);
+					println!("ccwu debug lib_dir {:#?}", lib_dir);
 
 					for lib in &["common", "flatbuffers", "framework", "graph", "mlas", "optimizer", "providers", "session", "util"] {
 						let lib_path = lib_dir.join(platform_format_lib(&format!("onnxruntime_{lib}")));
@@ -257,6 +259,27 @@ fn prepare_libort_dir() -> (PathBuf, bool) {
 					println!("cargo:rustc-link-lib=static=onnx");
 					println!("cargo:rustc-link-lib=static=onnx_proto");
 
+					if target_os == "android" {
+						add_search_dir(transform_dep(external_lib_dir.join("opencv-build").join("lib").join("arm64-v8a"), &profile));
+					} else {
+						add_search_dir(transform_dep(external_lib_dir.join("opencv-build").join("lib"), &profile));
+					}
+					println!("cargo:rustc-link-lib=static=opencv_core");
+					println!("cargo:rustc-link-lib=static=opencv_imgcodecs");
+					println!("cargo:rustc-link-lib=static=opencv_imgproc");
+
+					if target_os == "android" {
+						add_search_dir(transform_dep(external_lib_dir.join("opencv-build").join("3rdparty").join("lib").join("arm64-v8a"), &profile));
+					} else {
+						add_search_dir(transform_dep(external_lib_dir.join("opencv-build").join("3rdparty").join("lib"), &profile));
+					}
+					println!("cargo:rustc-link-lib=static=libjpeg-turbo");
+					println!("cargo:rustc-link-lib=static=libpng");
+
+					add_search_dir(transform_dep(external_lib_dir.join("blingfire-build"), &profile));
+					println!("cargo:rustc-link-lib=static=bingfirtinydll_static");
+					println!("cargo:rustc-link-lib=static=fsaClientTiny");
+
 					add_search_dir(transform_dep(external_lib_dir.join("google_nsync-build"), &profile));
 					println!("cargo:rustc-link-lib=static=nsync_cpp");
 
@@ -269,7 +292,7 @@ fn prepare_libort_dir() -> (PathBuf, bool) {
 							add_search_dir(transform_dep(external_lib_dir.join("pytorch_clog-build"), &profile));
 						}
 						println!("cargo:rustc-link-lib=static=cpuinfo");
-						println!("cargo:rustc-link-lib=static=clog");
+						// println!("cargo:rustc-link-lib=static=clog");
 					}
 
 					add_search_dir(transform_dep(external_lib_dir.join("re2-build"), &profile));
