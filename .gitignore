@@ -197,3 +197,4 @@ WixTools/
 /glassbench*.db
 
 .venv*
+**/*.DS_Store

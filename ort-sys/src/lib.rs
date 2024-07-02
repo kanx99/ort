@@ -10,6 +10,8 @@
 #[doc(hidden)]
 pub mod internal;
 
+// FIXME: for Argus,
+// if build Argus with onnxruntime <= 1.17, please modify the following line to 17
 pub const ORT_API_VERSION: u32 = 18;
 
 pub use std::ffi::{c_char, c_int, c_ulong, c_ulonglong, c_ushort, c_void};
