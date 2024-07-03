@@ -210,6 +210,7 @@ fn prepare_libort_dir() -> (PathBuf, bool) {
 			let static_configs: Vec<(PathBuf, PathBuf, PathBuf, Box<dyn Fn(PathBuf, &String) -> PathBuf>)> = vec![
 				(lib_dir.join(&profile), lib_dir.join("lib"), lib_dir.join("_deps"), Box::new(|p: PathBuf, profile| p.join(profile))),
 				(lib_dir.join(&profile), lib_dir.join("lib"), lib_dir.join(&profile).join("_deps"), Box::new(|p: PathBuf, _| p)),
+				// Added the following line for Argus build of onnxruntime
 				(lib_dir.clone(), lib_dir.join("lib"), lib_dir.join("_deps"), Box::new(|p: PathBuf, _| p)),
 				(lib_dir.clone(), lib_dir.join("lib"), lib_dir.parent().unwrap().join("_deps"), Box::new(|p: PathBuf, _| p)),
 				(lib_dir.join("onnxruntime"), lib_dir.join("onnxruntime").join("lib"), lib_dir.join("_deps"), Box::new(|p: PathBuf, _| p)),
@@ -217,7 +218,6 @@ fn prepare_libort_dir() -> (PathBuf, bool) {
 			for (lib_dir, extension_lib_dir, external_lib_dir, transform_dep) in static_configs {
 				if lib_dir.join(platform_format_lib("onnxruntime_common")).exists() && external_lib_dir.exists() {
 					add_search_dir(&lib_dir);
-					println!("ccwu debug lib_dir {:#?}", lib_dir);
 
 					for lib in &["common", "flatbuffers", "framework", "graph", "mlas", "optimizer", "providers", "session", "util"] {
 						let lib_path = lib_dir.join(platform_format_lib(&format!("onnxruntime_{lib}")));
@@ -229,8 +229,15 @@ fn prepare_libort_dir() -> (PathBuf, bool) {
 						}
 					}
 
-					if extension_lib_dir.exists() && extension_lib_dir.join(platform_format_lib("ortcustomops")).exists() {
+					if extension_lib_dir.exists() && (extension_lib_dir.join(platform_format_lib("ortcustomops")).exists()) {
 						add_search_dir(&extension_lib_dir);
+						println!("cargo:rustc-link-lib=static=ortcustomops");
+						println!("cargo:rustc-link-lib=static=ocos_operators");
+						println!("cargo:rustc-link-lib=static=noexcep_operators");
+					} else if extension_lib_dir.join("Release").exists() && extension_lib_dir.join("Release").join(platform_format_lib("ortcustomops")).exists()
+					{
+						// Added for Argus iOS build of onnxruntime
+						add_search_dir(extension_lib_dir.join("Release"));
 						println!("cargo:rustc-link-lib=static=ortcustomops");
 						println!("cargo:rustc-link-lib=static=ocos_operators");
 						println!("cargo:rustc-link-lib=static=noexcep_operators");
@@ -260,18 +267,21 @@ fn prepare_libort_dir() -> (PathBuf, bool) {
 					println!("cargo:rustc-link-lib=static=onnx_proto");
 
 					if target_os == "android" {
+						// Added the following line for Argus Android build of onnxruntime
 						add_search_dir(transform_dep(external_lib_dir.join("opencv-build").join("lib").join("arm64-v8a"), &profile));
 					} else {
-						add_search_dir(transform_dep(external_lib_dir.join("opencv-build").join("lib"), &profile));
+						add_search_dir(transform_dep(external_lib_dir.join("opencv-build").join("lib"), &String::from("Release")));
+						// add_search_dir(transform_dep(external_lib_dir.join("opencv-build").join("lib"), &profile));
 					}
 					println!("cargo:rustc-link-lib=static=opencv_core");
 					println!("cargo:rustc-link-lib=static=opencv_imgcodecs");
 					println!("cargo:rustc-link-lib=static=opencv_imgproc");
 
 					if target_os == "android" {
+						// Added the following line for Argus Android build of onnxruntime
 						add_search_dir(transform_dep(external_lib_dir.join("opencv-build").join("3rdparty").join("lib").join("arm64-v8a"), &profile));
 					} else {
-						add_search_dir(transform_dep(external_lib_dir.join("opencv-build").join("3rdparty").join("lib"), &profile));
+						add_search_dir(transform_dep(external_lib_dir.join("opencv-build").join("3rdparty").join("lib"), &String::from("Release")));
 					}
 					println!("cargo:rustc-link-lib=static=libjpeg-turbo");
 					println!("cargo:rustc-link-lib=static=libpng");
